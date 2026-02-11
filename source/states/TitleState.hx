@@ -322,6 +322,9 @@ class TitleState extends MusicBeatState
 
 	override function update(elapsed:Float)
 	{
+		// CRITICAL: Update controls FIRST before using them
+		super.update(elapsed);
+		
 		if (FlxG.sound.music != null)
 			Conductor.songPosition = FlxG.sound.music.time;
 		// FlxG.watch.addQuick('amp', FlxG.sound.music.amplitude);
@@ -457,7 +460,7 @@ class TitleState extends MusicBeatState
 			if(controls.UI_RIGHT) swagShader.hue += elapsed * 0.1;
 		}
 
-		super.update(elapsed);
+		// Note: super.update() was moved to the TOP of this function
 	}
 
 	function createCoolText(textArray:Array<String>, ?offset:Float = 0)
@@ -645,5 +648,14 @@ class TitleState extends MusicBeatState
 			}
 			skippedIntro = true;
 		}
+	}
+
+	override function destroy()
+	{
+		#if TOUCH_CONTROLS_ALLOWED
+		removeTouchControls();
+		#end
+		
+		super.destroy();
 	}
 }

@@ -25,6 +25,195 @@ import states.TitleState;
 	public var camZooms:Bool = true;
 	public var hideHud:Bool = false;
 	public var noteOffset:Int = 0;
+	public var debugMode:Bool = false;
+	
+	/* Mobile */
+	public var wideScreen:Bool = false;
+	#if android public var storageType:String = "EXTERNAL_DATA"; #end
+	
+	public var mobileBinds:Map<String, Array<String>> = [
+		// 1K
+		'1k_note_1'		=> ['1K_NOTE_1'],
+
+		// 2K
+		'2k_note_1'		=> ['2K_NOTE_1'],
+		'2k_note_2'		=> ['2K_NOTE_2'],
+
+		// 3K
+		'3k_note_1'		=> ['3K_NOTE_1'],
+		'3k_note_2'		=> ['3K_NOTE_2'],
+		'3k_note_3'		=> ['3K_NOTE_3'],
+
+		// 4K
+		'note_left'		=> ['NOTE_LEFT'],
+		'note_down'	=> ['NOTE_DOWN'],
+		'note_up'		=> ['NOTE_UP'],
+		'note_right'		=> ['NOTE_RIGHT'],
+		
+		// 5K
+		'5k_note_1'		=> ['5K_NOTE_1'],
+		'5k_note_2'		=> ['5K_NOTE_2'],
+		'5k_note_3'		=> ['5K_NOTE_3'],
+		'5k_note_4'		=> ['5K_NOTE_4'],
+		'5k_note_5'		=> ['5K_NOTE_5'],
+		
+		// 6K
+		'6k_note_1'		=> ['6K_NOTE_1'],
+		'6k_note_2'		=> ['6K_NOTE_2'],
+		'6k_note_3'		=> ['6K_NOTE_3'],
+		'6k_note_4'		=> ['6K_NOTE_4'],
+		'6k_note_5'		=> ['6K_NOTE_5'],
+		'6k_note_6'		=> ['6K_NOTE_6'],
+		
+		// 7K
+		'7k_note_1'		=> ['7K_NOTE_1'],
+		'7k_note_2'		=> ['7K_NOTE_2'],
+		'7k_note_3'		=> ['7K_NOTE_3'],
+		'7k_note_4'		=> ['7K_NOTE_4'],
+		'7k_note_5'		=> ['7K_NOTE_5'],
+		'7k_note_6'		=> ['7K_NOTE_6'],
+		'7k_note_7'		=> ['7K_NOTE_7'],
+		
+		// 8K
+		'8k_note_1'		=> ['8K_NOTE_1'],
+		'8k_note_2'		=> ['8K_NOTE_2'],
+		'8k_note_3'		=> ['8K_NOTE_3'],
+		'8k_note_4'		=> ['8K_NOTE_4'],
+		'8k_note_5'		=> ['8K_NOTE_5'],
+		'8k_note_6'		=> ['8K_NOTE_6'],
+		'8k_note_7'		=> ['8K_NOTE_7'],
+		'8k_note_8'		=> ['8K_NOTE_8'],
+		
+		// 9K
+		'9k_note_1'		=> ['9K_NOTE_1'],
+		'9k_note_2'		=> ['9K_NOTE_2'],
+		'9k_note_3'		=> ['9K_NOTE_3'],
+		'9k_note_4'		=> ['9K_NOTE_4'],
+		'9k_note_5'		=> ['9K_NOTE_5'],
+		'9k_note_6'		=> ['9K_NOTE_6'],
+		'9k_note_7'		=> ['9K_NOTE_7'],
+		'9k_note_8'		=> ['9K_NOTE_8'],
+		'9k_note_9'		=> ['9K_NOTE_9'],
+		
+		// 20K
+		'20k_note_1'	=> ['20K_NOTE_1'],
+		'20k_note_2'	=> ['20K_NOTE_2'],
+		'20k_note_3'	=> ['20K_NOTE_3'],
+		'20k_note_4'	=> ['20K_NOTE_4'],
+		'20k_note_5'	=> ['20K_NOTE_5'],
+		'20k_note_6'	=> ['20K_NOTE_6'],
+		'20k_note_7'	=> ['20K_NOTE_7'],
+		'20k_note_8'	=> ['20K_NOTE_8'],
+		'20k_note_9'	=> ['20K_NOTE_9'],
+		'20k_note_10'	=> ['20K_EXTRA_10'],
+		'20k_note_11'	=> ['20K_EXTRA_11'],
+		'20k_note_12'	=> ['20K_EXTRA_12'],
+		'20k_note_13'	=> ['20K_EXTRA_13'],
+		'20k_note_14'	=> ['20K_EXTRA_14'],
+		'20k_note_15'	=> ['20K_EXTRA_15'],
+		'20k_note_16'	=> ['20K_EXTRA_16'],
+		'20k_note_17'	=> ['20K_EXTRA_17'],
+		'20k_note_18'	=> ['20K_EXTRA_18'],
+		'20k_note_19'	=> ['20K_EXTRA_19'],
+		'20k_note_20'	=> ['20K_EXTRA_20'],
+		
+		// 55K
+		'55k_note_1'	=> ['55K_NOTE_1'],
+		'55k_note_2'	=> ['55K_NOTE_2'],
+		'55k_note_3'	=> ['55K_NOTE_3'],
+		'55k_note_4'	=> ['55K_NOTE_4'],
+		'55k_note_5'	=> ['55K_NOTE_5'],
+		'55k_note_6'	=> ['55K_NOTE_6'],
+		'55k_note_7'	=> ['55K_NOTE_7'],
+		'55k_note_8'	=> ['55K_NOTE_8'],
+		'55k_note_9'	=> ['55K_NOTE_9'],
+		'55k_note_10'	=> ['55K_EXTRA_10'],
+		'55k_note_11'	=> ['55K_EXTRA_11'],
+		'55k_note_12'	=> ['55K_EXTRA_12'],
+		'55k_note_13'	=> ['55K_EXTRA_13'],
+		'55k_note_14'	=> ['55K_EXTRA_14'],
+		'55k_note_15'	=> ['55K_EXTRA_15'],
+		'55k_note_16'	=> ['55K_EXTRA_16'],
+		'55k_note_17'	=> ['55K_EXTRA_17'],
+		'55k_note_18'	=> ['55K_EXTRA_18'],
+		'55k_note_19'	=> ['55K_EXTRA_19'],
+		'55k_note_20'	=> ['55K_EXTRA_20'],
+		'55k_note_21'	=> ['55K_EXTRA_21'],
+		'55k_note_22'	=> ['55K_EXTRA_22'],
+		'55k_note_23'	=> ['55K_EXTRA_23'],
+		'55k_note_24'	=> ['55K_EXTRA_24'],
+		'55k_note_25'	=> ['55K_EXTRA_25'],
+		'55k_note_26'	=> ['55K_EXTRA_26'],
+		'55k_note_27'	=> ['55K_EXTRA_27'],
+		'55k_note_28'	=> ['55K_EXTRA_28'],
+		'55k_note_29'	=> ['55K_EXTRA_29'],
+		'55k_note_30'	=> ['55K_EXTRA_30'],
+		'55k_note_31'	=> ['55K_EXTRA_31'],
+		'55k_note_32'	=> ['55K_EXTRA_32'],
+		'55k_note_33'	=> ['55K_EXTRA_33'],
+		'55k_note_34'	=> ['55K_EXTRA_34'],
+		'55k_note_35'	=> ['55K_EXTRA_35'],
+		'55k_note_36'	=> ['55K_EXTRA_36'],
+		'55k_note_37'	=> ['55K_EXTRA_37'],
+		'55k_note_38'	=> ['55K_EXTRA_38'],
+		'55k_note_39'	=> ['55K_EXTRA_39'],
+		'55k_note_40'	=> ['55K_EXTRA_40'],
+		'55k_note_41'	=> ['55K_EXTRA_41'],
+		'55k_note_42'	=> ['55K_EXTRA_42'],
+		'55k_note_43'	=> ['55K_EXTRA_43'],
+		'55k_note_44'	=> ['55K_EXTRA_44'],
+		'55k_note_45'	=> ['55K_EXTRA_45'],
+		'55k_note_46'	=> ['55K_EXTRA_46'],
+		'55k_note_47'	=> ['55K_EXTRA_47'],
+		'55k_note_48'	=> ['55K_EXTRA_48'],
+		'55k_note_49'	=> ['55K_EXTRA_49'],
+		'55k_note_50'	=> ['55K_EXTRA_50'],
+		'55k_note_51'	=> ['55K_EXTRA_51'],
+		'55k_note_52'	=> ['55K_EXTRA_52'],
+		'55k_note_53'	=> ['55K_EXTRA_53'],
+		'55k_note_54'	=> ['55K_EXTRA_54'],
+		'55k_note_55'	=> ['55K_EXTRA_55'],
+
+		'ui_up'			=> ['UP'],
+		'ui_left'			=> ['LEFT'],
+		'ui_down'		=> ['DOWN'],
+		'ui_right'		=> ['RIGHT'],
+
+		'accept'		=> ['A'],
+		'back'			=> ['B'],
+		'pause'			=> ['P'],
+		'reset'			=> ['NONE'],
+		'taunt'			=> ['T']
+	];
+	public static var defaultMobileBinds:Map<String, Array<String>> = null;
+	public static var defaultKeys:Map<String, Array<FlxKey>> = null;
+	public static var defaultButtons:Map<String, Array<FlxGamepadInputID>> = null;
+
+	/* Mobile Controls */
+	/* Bool Options */
+	public var disableOnlineShaders:Bool = false;
+	public var hitboxHint:Bool = false;
+	public var ogGameControls:Bool = false; //There we go
+
+	/* Int/Float Options */
+	public var extraKeys:Int = 0;
+	public var hitboxAlpha:Float = #if mobile 0.7 #else 0 #end;
+	public var mobilePadAlpha:Float = #if mobile 0.6 #else 0 #end;
+
+	/* String Options */
+	public var hitboxType:String = 'Gradient';
+	public var hitboxLocation:String = 'Bottom';
+	public var hitboxMode:String = 'Normal (New)';
+	public var mobileExtraKeyReturns:Array<String> = ['SHIFT', 'SPACE', 'Q', 'E'];
+
+	//P.E.T variables
+	public var menuTheme:String = 'V2.5';
+	public var petwatermark:Bool = true;
+	public var petloadingscreen:Bool = true;
+	public var petwatermarklogo:String = 'ONLINE';
+	public var petloadingscreenimage:String = 'ONLINE';
+	public var disableIntroVideo:Bool = false;
+
 	public var arrowRGB:Array<Array<FlxColor>> = [
 		[0xFFC24B99, 0xFFFFFFFF, 0xFF3C1F56],
 		[0xFF00FFFF, 0xFFFFFFFF, 0xFF1542B7],
@@ -68,6 +257,8 @@ import states.TitleState;
 	];
 
 	public var comboOffset:Array<Int> = [0, 0, 0, 0];
+	public var favoriteSongs:Array<String> = [];
+	public var favSongs:Array<String> = []; // songName-folder format
 	public var ratingOffset:Int = 0;
 	public var sickWindow:Float = 45.0;
 	public var goodWindow:Float = 90.0;
@@ -77,6 +268,8 @@ import states.TitleState;
 	public var discordRPC:Bool = true;
 	public var loadingScreen:Bool = true;
 	public var language:String = 'en-US';
+	
+	public var importSaveFile:String = '';
 }
 
 class ClientPrefs {
@@ -138,6 +331,16 @@ class ClientPrefs {
 			for (button in gamepadBinds.keys())
 				if(defaultButtons.exists(button))
 					gamepadBinds.set(button, defaultButtons.get(button).copy());
+	}
+	public static function isDebug() {
+		#if debug
+		return true;
+		#end
+
+		if (PlayState.chartingMode)
+			return true;
+		
+		return data?.debugMode ?? false;
 	}
 
 	public static function clearInvalidKeys(key:String)

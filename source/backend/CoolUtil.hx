@@ -2,6 +2,8 @@ package backend;
 
 import openfl.utils.Assets;
 import lime.utils.Assets as LimeAssets;
+import lime.app.Application;
+import openfl.Lib;
 
 class CoolUtil
 {
@@ -30,6 +32,15 @@ class CoolUtil
 			http.request();
 		}
 		return version;
+	}
+	public static function showPopUp(message:String, title:String):Void {
+		#if android
+		AndroidTools.showAlertDialog(title, message, {name: "OK", func: () -> {}});
+		#elseif windows
+		Lib.application.window.alert(message, title);
+		#else
+		trace('[$title] $message');
+		#end
 	}
 	inline public static function quantize(f:Float, snap:Float){
 		// changed so this actually works lol

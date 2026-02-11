@@ -10,7 +10,12 @@ enum Alignment
 	RIGHT;
 }
 
-class Alphabet extends FlxSpriteGroup
+interface Scrollable {
+	var targetY:Int;
+	var startPosition:FlxPoint;
+}
+
+class Alphabet extends FlxSpriteGroup implements Scrollable
 {
 	public var text(default, set):String;
 

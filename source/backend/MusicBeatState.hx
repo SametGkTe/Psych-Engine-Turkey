@@ -2,7 +2,16 @@ package backend;
 
 import flixel.FlxState;
 import backend.PsychCamera;
-
+/*
+#if TOUCH_CONTROLS_ALLOWED
+import mobile.MobileControlManager;
+import mobile.objects.FunkinMobilePad;
+import mobile.MobileControlManager;
+import mobile.objects.FunkinMobilePad;
+import mobile.objects.FunkinHitbox;
+import mobile.objects.FunkinJoyStick;
+#end
+*/
 class MusicBeatState extends FlxState
 {
 	private var curSection:Int = 0;
@@ -14,6 +23,61 @@ class MusicBeatState extends FlxState
 	private var curDecStep:Float = 0;
 	private var curDecBeat:Float = 0;
 	public var controls(get, never):Controls;
+	/*
+	#if TOUCH_CONTROLS_ALLOWED
+	public var mobileManager:MobileControlManager;
+	#end
+	
+	// Mobil buton fonksiyonları
+	public inline function mobileButtonJustPressed(buttons:Dynamic):Bool {
+		#if TOUCH_CONTROLS_ALLOWED
+		return mobileManager != null && mobileManager.mobilePad != null && mobileManager.mobilePad.justPressed(buttons);
+		#else
+		return false;
+		#end
+	}
+
+	public inline function mobileButtonPressed(buttons:Dynamic):Bool {
+		#if TOUCH_CONTROLS_ALLOWED
+		return mobileManager != null && mobileManager.mobilePad != null && mobileManager.mobilePad.pressed(buttons);
+		#else
+		return false;
+		#end
+	}
+
+	public inline function mobileButtonJustReleased(buttons:Dynamic):Bool {
+		#if TOUCH_CONTROLS_ALLOWED
+		return mobileManager != null && mobileManager.mobilePad != null && mobileManager.mobilePad.justReleased(buttons);
+		#else
+		return false;
+		#end
+	}
+
+	public inline function mobileButtonReleased(buttons:Dynamic):Bool {
+		#if TOUCH_CONTROLS_ALLOWED
+		return mobileManager != null && mobileManager.mobilePad != null && mobileManager.mobilePad.released(buttons);
+		#else
+		return false;
+		#end
+	}
+
+	// TitleState.hx için gerekli
+	public function removeTouchControls():Void {
+		#if TOUCH_CONTROLS_ALLOWED
+		if (mobileManager != null) {
+			mobileManager.removeMobilePad();
+		}
+		#end
+	}
+
+	public function new() {
+		super();
+		#if TOUCH_CONTROLS_ALLOWED
+		mobileManager = new MobileControlManager(this);
+		#end
+	}
+	*/
+	
 	private function get_controls()
 	{
 		return Controls.instance;
@@ -211,5 +275,15 @@ class MusicBeatState extends FlxState
 		var val:Null<Float> = 4;
 		if(PlayState.SONG != null && PlayState.SONG.notes[curSection] != null) val = PlayState.SONG.notes[curSection].sectionBeats;
 		return val == null ? 4 : val;
+	} // <-- KAPATILDI!
+
+	override function destroy() {
+		#if TOUCH_CONTROLS_ALLOWED
+		if (mobileManager != null) {
+			mobileManager.destroy();
+			mobileManager = null;
+		}
+		#end
+		super.destroy();
 	}
 }

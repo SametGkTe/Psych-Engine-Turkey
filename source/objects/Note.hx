@@ -60,6 +60,8 @@ class Note extends FlxSprite
 
 	public var wasGoodHit:Bool = false;
 	public var missed:Bool = false;
+	
+	public static var maniaKeys:Int = 4;
 
 	public var ignoreNote:Bool = false;
 	public var hitByOpponent:Bool = false;

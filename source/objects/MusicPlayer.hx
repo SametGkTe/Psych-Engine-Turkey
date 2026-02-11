@@ -275,7 +275,6 @@ class MusicPlayer extends FlxGroup
 			progressBar.numDivisions = 0;
 
 			instance.bottomText.text = instance.bottomString;
-			instance.positionHighscore();
 		}
 		progressBar.updateBar();
 	}

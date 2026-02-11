@@ -75,6 +75,8 @@ class PlayState extends MusicBeatState
 {
 	public static var STRUM_X = 42;
 	public static var STRUM_X_MIDDLESCROLL = -278;
+	
+	public static var hitboxPositions:Array<Float> = [0, 140, 280, 420];
 
 	public static var ratingStuff:Array<Dynamic> = [
 		['You Suck!', 0.2], //From 0% to 19%
@@ -122,6 +124,8 @@ class PlayState extends MusicBeatState
 	public static var uiPrefix:String = "";
 	public static var uiPostfix:String = "";
 	public static var isPixelStage(get, never):Bool;
+	
+	public var customManagers:Map<String, Array<Dynamic>> = [];
 
 	@:noCompletion
 	static function set_stageUI(value:String):String

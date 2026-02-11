@@ -32,32 +32,34 @@ enum abstract AchievementOp(String)
 class Achievements {
 	public static function init()
 	{
-		createAchievement('friday_night_play',		{name: "Freaky on a Friday Night", description: "Play on a Friday... Night.", hidden: true});
+		createAchievement('friday_night_play',		{name: "Cuma Gecesi Çılgınlığı", description: "Bir Cuma... Gecesi oyna.", hidden: true});
 		#if BASE_GAME_FILES
-		createAchievement('week1_nomiss',			{name: "She Calls Me Daddy Too", description: "Beat Week 1 on Hard with no Misses."});
-		createAchievement('week2_nomiss',			{name: "No More Tricks", description: "Beat Week 2 on Hard with no Misses."});
-		createAchievement('week3_nomiss',			{name: "Call Me The Hitman", description: "Beat Week 3 on Hard with no Misses."});
-		createAchievement('week4_nomiss',			{name: "Lady Killer", description: "Beat Week 4 on Hard with no Misses."});
-		createAchievement('week5_nomiss',			{name: "Missless Christmas", description: "Beat Week 5 on Hard with no Misses."});
-		createAchievement('week6_nomiss',			{name: "Highscore!!", description: "Beat Week 6 on Hard with no Misses."});
-		createAchievement('week7_nomiss',			{name: "God Effing Damn It!", description: "Beat Week 7 on Hard with no Misses."});
-		createAchievement('weekend1_nomiss',		{name: "Just a Friendly Sparring", description: "Beat Weekend 1 on Hard with no Misses."});
+		createAchievement('week1_nomiss',			{name: "Banada Baba Diyor", description: "1. Haftayı Zorlukta Hata Yapmadan Bitir."});
+		createAchievement('week2_nomiss',			{name: "Hile Yok Artık", description: "2. Haftayı Zorlukta Hata Yapmadan Bitir."});
+		createAchievement('week3_nomiss',			{name: "Bana Tetikçi Deyin", description: "3. Haftayı Zorlukta Hata Yapmadan Bitir."});
+		createAchievement('week4_nomiss',			{name: "Kadın Avcısı", description: "4. Haftayı Zorlukta Hata Yapmadan Bitir."});
+		createAchievement('week5_nomiss',			{name: "Hatasız Noel", description: "5. Haftayı Zorlukta Hata Yapmadan Bitir."});
+		createAchievement('week6_nomiss',			{name: "Yüksek Skor!!", description: "6. Haftayı Zorlukta Hata Yapmadan Bitir."});
+		createAchievement('week7_nomiss',			{name: "Kahretsin Tanrım!", description: "7. Haftayı Zorlukta Hata Yapmadan Bitir."});
+		createAchievement('weekend1_nomiss',		{name: "Dostça bir Tartışma", description: "1. Haftasonunu Zorlukta Hata Yapmadan Bitir."});
 		#end
-		createAchievement('ur_bad',					{name: "What a Funkin' Disaster!", description: "Complete a Song with a rating lower than 20%."});
-		createAchievement('ur_good',				{name: "Perfectionist", description: "Complete a Song with a rating of 100%."});
+		createAchievement('ur_bad',					{name: "Ne Biçim Bir Felaket!", description: "Bir şarkıyı %20'den düşük bir puanla bitir."});
+		createAchievement('ur_good',				{name: "Mükemmeliyetçi", description: "Bir şarkıyı %100 puanla bitir."});
 		#if BASE_GAME_FILES
-		createAchievement('roadkill_enthusiast',	{name: "Roadkill Enthusiast", description: "Watch the Henchmen die 50 times.", maxScore: 50, maxDecimals: 0});
+		createAchievement('roadkill_enthusiast',	{name: "Yol Kazası Meraklısı", description: "Yardımcıların (Henchmen) 50 kez ölmesini izle.", maxScore: 50, maxDecimals: 0});
 		#end
-		createAchievement('oversinging', 			{name: "Oversinging Much...?", description: "Sing for 10 seconds without going back to Idle."});
-		createAchievement('hype',					{name: "Hyperactive", description: "Finish a Song without going back to Idle."});
-		createAchievement('two_keys',				{name: "Just the Two of Us", description: "Finish a Song pressing only two keys."});
-		createAchievement('toastie',				{name: "Toaster Gamer", description: "Have you tried to run the game on a toaster?"});
+		createAchievement('oversinging', 			{name: "Fazla mı Şarkı Söyledin...?", description: "Boş duruma (Idle) dönmeden 10 saniye boyunca şarkı söyle."});
+		createAchievement('hype',					{name: "Hiperaktif", description: "Boş duruma (Idle) dönmeden bir şarkıyı bitir."});
+		createAchievement('two_keys',				{name: "Sadece İkimiz", description: "Sadece iki tuşa basarak bir şarkıyı bitir."});
+		createAchievement('toastie',				{name: "Tost Makinesi Oyuncusu", description: "Oyunu bir tost makinesinde çalıştırmayı denedin mi?"});
 		#if BASE_GAME_FILES
-		createAchievement('debugger',				{name: "Debugger", description: "Beat the \"Test\" Stage from the Chart Editor.", hidden: true});
+		createAchievement('debugger',				{name: "Hata Ayıklayıcı", description: "Şarkı Düzenleyicisinden (Chart Editor) Test Şarkısını bitir.", hidden: true});
 		#end
 		#if (TITLE_SCREEN_EASTER_EGG || PSYCH_WATERMARKS)
-		createAchievement('pessy_easter_egg',		{name: "Engine Gal Pal", description: "Teehee, you found me~!", hidden: true});
+		createAchievement('pessy_easter_egg',		{name: "Engine Gal Pal", description: "Hihii, beni buldun~!", hidden: true});
 		#end
+		createAchievement('pet',				{name: "Oynadığın İçin Teşekkürler! :D", description: "Psych Engine Türkiye'nin Oyuncularından Ol!"});
+		createAchievement('abonem',				{name: "Abonem Kalmadı!", description: "Abonelerin Hepsini Öldürdün!", hidden: true});
 
 		//dont delete this thing below
 		_originalLength = _sortID + 1;

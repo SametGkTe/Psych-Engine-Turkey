@@ -17,7 +17,6 @@ class AchievementPopup extends openfl.display.Sprite {
 		// bg
 		graphics.beginFill(FlxColor.BLACK);
 		graphics.drawRoundRect(0, 0, 420, 130, 16, 16);
-
 		// achievement icon
 		var graphic = null;
 		var hasAntialias:Bool = ClientPrefs.data.antialiasing;
@@ -28,7 +27,8 @@ class AchievementPopup extends openfl.display.Sprite {
 
 		#if MODS_ALLOWED
 		var lastMod = Mods.currentModDirectory;
-		if(achievement != null) Mods.currentModDirectory = achievement.mod != null ? achievement.mod : '';
+		if(achievement != null) Mods.currentModDirectory = achievement.mod != null ?
+			achievement.mod : '';
 		#end
 
 		if(Paths.fileExists('images/$image-pixel.png', IMAGE))
@@ -64,7 +64,6 @@ class AchievementPopup extends openfl.display.Sprite {
 
 		var textX = sizeX + imgX + 15;
 		var textY = imgY + 20;
-
 		var text:FlxText = new FlxText(0, 0, 270, 'TEST!!!', 16);
 		text.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, LEFT);
 		drawTextAt(text, name, textX, textY);
@@ -79,11 +78,17 @@ class AchievementPopup extends openfl.display.Sprite {
 		FlxG.stage.addEventListener(Event.RESIZE, onResize);
 		addEventListener(Event.ENTER_FRAME, update);
 
-		FlxG.game.addChild(this); //Don't add it below mouse, or it will disappear once the game changes states
+		FlxG.game.addChild(this);
+		//Don't add it below mouse, or it will disappear once the game changes states
 
 		// fix scale
 		lastScale = (FlxG.stage.stageHeight / FlxG.height);
-		this.x = 20 * lastScale;
+		
+		// --- DEĞİŞİKLİK BURADA ---
+		// Eski kod: this.x = 20 * lastScale;
+		// Yeni kod: Ekran genişliğinden kutu genişliğini (420) çıkarıp ikiye bölüyoruz.
+		this.x = ((FlxG.width - 420) / 2) * lastScale;
+		
 		this.y = -130 * lastScale;
 		this.scaleX = lastScale;
 		this.scaleY = lastScale;
@@ -106,7 +111,6 @@ class AchievementPopup extends openfl.display.Sprite {
 	var countedTime:Float = 0;
 	var timePassed:Float = -1;
 	public var intendedY:Float = 0;
-
 	function update(e:Event)
 	{
 		if(timePassed < 0) 
@@ -141,7 +145,6 @@ class AchievementPopup extends openfl.display.Sprite {
 		var mult = (FlxG.stage.stageHeight / FlxG.height);
 		scaleX = mult;
 		scaleY = mult;
-
 		x = (mult / lastScale) * x;
 		y = (mult / lastScale) * y;
 		lastScale = mult;

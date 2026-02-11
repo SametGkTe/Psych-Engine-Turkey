@@ -3,22 +3,32 @@ package states;
 import flixel.FlxObject;
 import flixel.util.FlxSort;
 import objects.Bar;
+import flixel.util.FlxSpriteUtil;
+import flixel.tweens.FlxTween;
+import flixel.tweens.FlxEase;
+import objects.Alphabet;
 
 #if ACHIEVEMENTS_ALLOWED
 class AchievementsMenuState extends MusicBeatState
 {
 	public var curSelected:Int = 0;
-
 	public var options:Array<Dynamic> = [];
-	public var grpOptions:FlxSpriteGroup;
-	public var nameText:FlxText;
-	public var descText:FlxText;
-	public var progressTxt:FlxText;
-	public var progressBar:Bar;
+	private var achievementItems:FlxTypedGroup<AchievementItem>; // Yeni liste grubu
+	
+	// MODERN UI ELEMENTLERİ
+	var sideBarBG:FlxSprite;
+	var sideBarWidth:Int = 450;
+	var showcaseIcon:FlxSprite; // Sağ taraftaki dev ikon
+	
+	var nameText:FlxText;
+	var descText:FlxText;
+	var progressTxt:FlxText;
+	var progressBar:Bar; // Orijinal Bar sınıfını koruduk ama görseli değiştik
+	var statsText:FlxText; // Toplam tamamlanma oranı
 
 	var camFollow:FlxObject;
-
-	var MAX_PER_ROW:Int = 4;
+	var cameraTween:FlxTween = null; // Camera tween için
+	var showcaseIconTween:FlxTween = null; // Showcase icon pop tween için
 
 	override function create()
 	{
@@ -26,105 +36,115 @@ class AchievementsMenuState extends MusicBeatState
 		Paths.clearUnusedMemory();
 
 		#if DISCORD_ALLOWED
-		DiscordClient.changePresence("Achievements Menu", null);
+		DiscordClient.changePresence("Achievements Menu - Modernized", null);
 		#end
 
-		// prepare achievement list
+		// 1. VERİ HAZIRLIĞI
+		var totalUnlocked:Int = 0;
 		for (achievement => data in Achievements.achievements)
 		{
 			var unlocked:Bool = Achievements.isUnlocked(achievement);
 			if(data.hidden != true || unlocked)
 				options.push(makeAchievement(achievement, data, unlocked, data.mod));
+			
+			if(unlocked) totalUnlocked++;
 		}
+		options.sort(function(a, b) return sortByID(a, b));
 
-		camFollow = new FlxObject(0, 0, 1, 1);
-		add(camFollow);
-
+		// 2. ARKA PLAN
 		var menuBG:FlxSprite = new FlxSprite().loadGraphic(Paths.image('menuBGBlue'));
 		menuBG.antialiasing = ClientPrefs.data.antialiasing;
 		menuBG.setGraphicSize(Std.int(menuBG.width * 1.1));
 		menuBG.updateHitbox();
 		menuBG.screenCenter();
 		menuBG.scrollFactor.set();
+		menuBG.color = 0xFF444444; // Biraz karartalım
 		add(menuBG);
 
-		grpOptions = new FlxSpriteGroup();
-		grpOptions.scrollFactor.x = 0;
+		// 3. SIDEBAR (SOL LİSTE ALANI)
+		sideBarBG = new FlxSprite(0, 0).makeGraphic(sideBarWidth, FlxG.height, FlxColor.BLACK);
+		sideBarBG.alpha = 0.6;
+		sideBarBG.scrollFactor.set();
+		add(sideBarBG);
 
-		options.sort(sortByID);
-		for (option in options)
+		var separator = new FlxSprite(sideBarWidth, 0).makeGraphic(4, FlxG.height, FlxColor.WHITE);
+		separator.alpha = 0.2;
+		separator.scrollFactor.set();
+		add(separator);
+
+		// 4. LİSTE ÖĞELERİ (AchievementItem Class kullanacağız)
+		achievementItems = new FlxTypedGroup<AchievementItem>();
+		add(achievementItems);
+
+		for (i in 0...options.length)
 		{
-			var hasAntialias:Bool = ClientPrefs.data.antialiasing;
-			var graphic = null;
-			if(option.unlocked)
-			{
-				#if MODS_ALLOWED Mods.currentModDirectory = option.mod; #end
-				var image:String = 'achievements/' + option.name;
-				if(Paths.fileExists('images/$image-pixel.png', IMAGE))
-				{
-					graphic = Paths.image('$image-pixel');
-					hasAntialias = false;
-				}
-				else graphic = Paths.image(image);
-
-				if(graphic == null) graphic = Paths.image('unknownMod');
-			}
-			else graphic = Paths.image('achievements/lockedachievement');
-
-			var spr:FlxSprite = new FlxSprite(0, Math.floor(grpOptions.members.length / MAX_PER_ROW) * 180).loadGraphic(graphic);
-			spr.scrollFactor.x = 0;
-			spr.screenCenter(X);
-			spr.x += 180 * ((grpOptions.members.length % MAX_PER_ROW) - MAX_PER_ROW/2) + spr.width / 2 + 15;
-			spr.ID = grpOptions.members.length;
-			spr.antialiasing = hasAntialias;
-			grpOptions.add(spr);
+			var option = options[i];
+			var item = new AchievementItem(0, 0, option);
+			item.targetY = i; // Sıralamasını ata
+			item.ID = i;
+			// Listeyi sidebar içine yerleştir
+			item.x = 20;
+			item.y = 100 + (i * 110);
+			item.scale.set(0.8, 0.8);
+			item.scrollFactor.set(0, 1); // Sol kısım sabit, dikey kaydırma var
+			achievementItems.add(item);
 		}
-		#if MODS_ALLOWED Mods.loadTopMod(); #end
 
-		var box:FlxSprite = new FlxSprite(0, -30).makeGraphic(1, 1, FlxColor.BLACK);
-		box.scale.set(grpOptions.width + 60, grpOptions.height + 60);
-		box.updateHitbox();
-		box.alpha = 0.6;
-		box.scrollFactor.x = 0;
-		box.screenCenter(X);
-		add(box);
-		add(grpOptions);
+		camFollow = new FlxObject(0, 0, 1, 1);
+		camFollow.scrollFactor.set(0, 1); // Sadece Y ekseni kamerayı takip etsin
+		add(camFollow);
 
-		var box:FlxSprite = new FlxSprite(0, 570).makeGraphic(1, 1, FlxColor.BLACK);
-		box.scale.set(FlxG.width, FlxG.height - box.y);
-		box.updateHitbox();
-		box.alpha = 0.6;
-		box.scrollFactor.set();
-		add(box);
-		
-		nameText = new FlxText(50, box.y + 10, FlxG.width - 100, "", 32);
-		nameText.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER);
+		// 5. SAĞ TARAF - VITRIN (SHOWCASE)
+		var rightCenter = sideBarWidth + (FlxG.width - sideBarWidth) / 2;
+
+		// Ikon (Devasa)
+		showcaseIcon = new FlxSprite();
+		showcaseIcon.antialiasing = ClientPrefs.data.antialiasing;
+		showcaseIcon.scrollFactor.set();
+		add(showcaseIcon);
+
+		// İsim
+		nameText = new FlxText(sideBarWidth + 50, 50, FlxG.width - sideBarWidth - 100, "", 42);
+		nameText.setFormat(Paths.font("vcr.ttf"), 42, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		nameText.borderSize = 3;
 		nameText.scrollFactor.set();
-
-		descText = new FlxText(50, nameText.y + 38, FlxG.width - 100, "", 24);
-		descText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER);
-		descText.scrollFactor.set();
-
-		progressBar = new Bar(0, descText.y + 52);
-		progressBar.screenCenter(X);
-		progressBar.scrollFactor.set();
-		progressBar.enabled = false;
-		
-		progressTxt = new FlxText(50, progressBar.y - 6, FlxG.width - 100, "", 32);
-		progressTxt.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		progressTxt.scrollFactor.set();
-		progressTxt.borderSize = 2;
-
-		add(progressBar);
-		add(progressTxt);
-		add(descText);
 		add(nameText);
-		
+
+		// Açıklama
+		descText = new FlxText(sideBarWidth + 50, FlxG.height - 200, FlxG.width - sideBarWidth - 100, "", 24);
+		descText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		descText.borderSize = 2;
+		descText.scrollFactor.set();
+		add(descText);
+
+		// Progress Bar
+		progressBar = new Bar(0, descText.y + 80, 'healthBar', function() return options[curSelected].curProgress, 0, options[curSelected].maxProgress > 0 ? options[curSelected].maxProgress : 1);
+		progressBar.screenCenter(X);
+		progressBar.x = rightCenter - (progressBar.width / 2); // Manuel ortalama çünkü screenCenter tüm ekranı baz alır
+		progressBar.scrollFactor.set();
+		progressBar.enabled = false; // Bar sınıfının update'ini manuel çağıracağız tween için
+		progressBar.leftBar.color = FlxColor.LIME; // Tamamlanan kısım yeşil
+		progressBar.rightBar.color = FlxColor.BLACK; // Arka plan siyah
+		add(progressBar);
+
+		progressTxt = new FlxText(progressBar.x, progressBar.y - 30, progressBar.width, "", 24);
+		progressTxt.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		progressTxt.scrollFactor.set();
+		add(progressTxt);
+
+		// 6. YENİ ÖZELLİK: İSTATİSTİKLER (Sağ Üst Köşe)
+		var percent = Math.floor((totalUnlocked / options.length) * 100);
+		statsText = new FlxText(FlxG.width - 300, 20, 280, 'TAMAMLANAN: $totalUnlocked/${options.length} ($percent%)', 20);
+		statsText.setFormat(Paths.font("vcr.ttf"), 20, FlxColor.YELLOW, RIGHT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		statsText.scrollFactor.set();
+		add(statsText);
+
 		_changeSelection();
-		super.create();
 		
-		FlxG.camera.follow(camFollow, null, 0.15);
-		FlxG.camera.scroll.y = -FlxG.height;
+		// Başlangıç animasyonu
+		FlxG.camera.follow(camFollow, null, 0.1);
+		
+		super.create();
 	}
 
 	function makeAchievement(achievement:String, data:Achievement, unlocked:Bool, mod:String = null)
@@ -145,58 +165,16 @@ class AchievementsMenuState extends MusicBeatState
 	public static function sortByID(Obj1:Dynamic, Obj2:Dynamic):Int
 		return FlxSort.byValues(FlxSort.ASCENDING, Obj1.ID, Obj2.ID);
 
-	var goingBack:Bool = false;
 	override function update(elapsed:Float) {
-		if(!goingBack && options.length > 1)
+		if(options.length > 0)
 		{
-			var add:Int = 0;
-			if (controls.UI_LEFT_P) add = -1;
-			else if (controls.UI_RIGHT_P) add = 1;
-
-			if(add != 0)
-			{
-				var oldRow:Int = Math.floor(curSelected / MAX_PER_ROW);
-				var rowSize:Int = Std.int(Math.min(MAX_PER_ROW, options.length - oldRow * MAX_PER_ROW));
-				
-				curSelected += add;
-				var curRow:Int = Math.floor(curSelected / MAX_PER_ROW);
-				if(curSelected >= options.length) curRow++;
-
-				if(curRow != oldRow)
-				{
-					if(curRow < oldRow) curSelected += rowSize;
-					else curSelected = curSelected -= rowSize;
-				}
-				_changeSelection();
-			}
-
-			if(options.length > MAX_PER_ROW)
-			{
-				var add:Int = 0;
-				if (controls.UI_UP_P) add = -1;
-				else if (controls.UI_DOWN_P) add = 1;
-
-				if(add != 0)
-				{
-					var diff:Int = curSelected - (Math.floor(curSelected / MAX_PER_ROW) * MAX_PER_ROW);
-					curSelected += add * MAX_PER_ROW;
-					//trace('Before correction: $curSelected');
-					if(curSelected < 0)
-					{
-						curSelected += Math.ceil(options.length / MAX_PER_ROW) * MAX_PER_ROW;
-						if(curSelected >= options.length) curSelected -= MAX_PER_ROW;
-						//trace('Pass 1: $curSelected');
-					}
-					if(curSelected >= options.length)
-					{
-						curSelected = diff;
-						//trace('Pass 2: $curSelected');
-					}
-
-					_changeSelection();
-				}
-			}
+			// Basit Yukarı/Aşağı navigasyon (Izgara mantığı kalktı)
+			if (controls.UI_UP_P) changeSelection(-1);
+			if (controls.UI_DOWN_P) changeSelection(1);
 			
+			// Mouse Wheel desteği
+			if(FlxG.mouse.wheel != 0) changeSelection(-FlxG.mouse.wheel);
+
 			if(controls.RESET && (options[curSelected].unlocked || options[curSelected].curProgress > 0))
 			{
 				openSubState(new ResetAchievementSubstate());
@@ -206,47 +184,182 @@ class AchievementsMenuState extends MusicBeatState
 		if (controls.BACK) {
 			FlxG.sound.play(Paths.sound('cancelMenu'));
 			MusicBeatState.switchState(new MainMenuState());
-			goingBack = true;
 		}
+		
+		// Kamera takibi (Dikey liste için) - Seçili öğeyi ekran ortasında tut
+		if(achievementItems.members.length > 0)
+		{
+			var selectedItem = achievementItems.members[curSelected];
+			var targetY = selectedItem.y + selectedItem.height/2;
+			
+			// Camera Y'sini tween ile ayarla (ekran ortasında seçili item)
+			var maxScroll = Math.max(0, (achievementItems.members[achievementItems.members.length - 1].y + 110) - FlxG.height);
+			var targetScroll = Math.min(Math.max(targetY - (FlxG.height / 2), 0), maxScroll);
+			
+			// Önceki tweeni iptal et
+			if(cameraTween != null) cameraTween.cancel();
+			
+			// Yeni tween oluştur
+			cameraTween = FlxTween.num(FlxG.camera.scroll.y, targetScroll, 0.4, {ease: FlxEase.quartOut}, function(v:Float){
+				FlxG.camera.scroll.y = v;
+			});
+		}
+		
+
 		super.update(elapsed);
 	}
 
 	public var barTween:FlxTween = null;
+
+	function changeSelection(change:Int = 0)
+	{
+		curSelected += change;
+		if (curSelected < 0) curSelected = options.length - 1;
+		if (curSelected >= options.length) curSelected = 0;
+
+		_changeSelection();
+	}
+
 	function _changeSelection()
 	{
 		FlxG.sound.play(Paths.sound('scrollMenu'));
-		var hasProgress = options[curSelected].maxProgress > 0;
-		nameText.text = options[curSelected].displayName;
-		descText.text = options[curSelected].description;
+		var option = options[curSelected];
+		var hasProgress = option.maxProgress > 0;
+
+		// 1. Text Güncelle
+		nameText.text = option.displayName;
+		descText.text = option.description;
 		progressTxt.visible = progressBar.visible = hasProgress;
 
-		if(barTween != null) barTween.cancel();
+		// 2. Vitrin Ikonunu Güncelle (Animasyonlu)
+		var graphic = null;
+		var hasAntialias = ClientPrefs.data.antialiasing;
+		if(option.unlocked)
+		{
+			#if MODS_ALLOWED Mods.currentModDirectory = option.mod; #end
+			var image:String = 'achievements/' + option.name;
+			if(Paths.fileExists('images/$image-pixel.png', IMAGE))
+			{
+				graphic = Paths.image('$image-pixel');
+				hasAntialias = false;
+			}
+			else graphic = Paths.image(image);
+			if(graphic == null) graphic = Paths.image('unknownMod');
+		}
+		else graphic = Paths.image('achievements/lockedachievement');
 
+		showcaseIcon.loadGraphic(graphic);
+		showcaseIcon.antialiasing = hasAntialias;
+		
+		// Vitrin ikonu boyutlandırma ve ortalama
+		showcaseIcon.setGraphicSize(Std.int(showcaseIcon.width * 1.7)); // 2 kat büyük
+		showcaseIcon.updateHitbox();
+		var rightCenter = sideBarWidth + (FlxG.width - sideBarWidth) / 2;
+		showcaseIcon.setPosition(rightCenter - showcaseIcon.width / 2, (FlxG.height / 2) - showcaseIcon.height / 2 - 50);
+
+		// POP Efekti (Tween)
+		if(showcaseIconTween != null) showcaseIconTween.cancel(); // Önceki tweeni iptal et
+		showcaseIcon.scale.set(0, 0);
+		showcaseIconTween = FlxTween.tween(showcaseIcon.scale, {x: 2, y: 2}, 0.4, {ease: FlxEase.elasticOut});
+
+		// 3. Progress Bar Tween
+		if(barTween != null) barTween.cancel();
 		if(hasProgress)
 		{
-			var val1:Float = options[curSelected].curProgress;
-			var val2:Float = options[curSelected].maxProgress;
-			progressTxt.text = CoolUtil.floorDecimal(val1, options[curSelected].decProgress) + ' / ' + CoolUtil.floorDecimal(val2, options[curSelected].decProgress);
-
-			barTween = FlxTween.tween(progressBar, {percent: (val1 / val2) * 100}, 0.5, {ease: FlxEase.quadOut,
-				onComplete: function(twn:FlxTween) progressBar.updateBar(),
-				onUpdate: function(twn:FlxTween) progressBar.updateBar()
+			var val1:Float = option.curProgress;
+			var val2:Float = option.maxProgress;
+			progressTxt.text = CoolUtil.floorDecimal(val1, option.decProgress) + ' / ' + CoolUtil.floorDecimal(val2, option.decProgress);
+			
+			var startPercent = progressBar.percent;
+			var endPercent = (val1 / val2) * 100;
+			progressBar.percent = 0; // Görsel efekt için sıfırdan başlat
+			
+			barTween = FlxTween.num(0, endPercent, 0.5, {ease: FlxEase.quartOut}, function(v:Float)
+			{
+				progressBar.percent = v;
+				progressBar.updateBar();
 			});
 		}
-		else progressBar.percent = 0;
-
-		var maxRows = Math.floor(grpOptions.members.length / MAX_PER_ROW);
-		if(maxRows > 0)
+		else 
 		{
-			var camY:Float = FlxG.height / 2 + (Math.floor(curSelected / MAX_PER_ROW) / maxRows) * Math.max(0, grpOptions.height - FlxG.height / 2 - 50) - 100;
-			camFollow.setPosition(0, camY);
+			progressBar.percent = 0;
+			progressBar.updateBar();
 		}
-		else camFollow.setPosition(0, grpOptions.members[curSelected].getGraphicMidpoint().y - 100);
 
-		grpOptions.forEach(function(spr:FlxSprite) {
-			spr.alpha = 0.6;
-			if(spr.ID == curSelected) spr.alpha = 1;
-		});
+		// 4. Liste Elemanlarını Güncelle (Highlight)
+		for (i in 0...achievementItems.members.length)
+		{
+			var item = achievementItems.members[i];
+			if(i == curSelected)
+			{
+				item.alpha = 1;
+				item.bg.color = 0xFFFFFFFF; // Seçiliyse Parlak
+				item.bg.alpha = 0.2;
+				item.scale.set(1.05, 1.05); // Hafif büyüt
+			}
+			else
+			{
+				item.alpha = 0.6;
+				item.bg.color = 0xFF000000;
+				item.bg.alpha = 0.4;
+				item.scale.set(1, 1);
+			}
+		}
+		#if MODS_ALLOWED Mods.loadTopMod(); #end
+	}
+}
+
+// YENİ CLASS: LİSTE ÖĞESİ TASARIMI
+class AchievementItem extends FlxSpriteGroup
+{
+	public var bg:FlxSprite;
+	public var icon:FlxSprite;
+	public var text:FlxText;
+	public var targetY:Int = 0;
+	
+	public function new(x:Float, y:Float, data:Dynamic)
+	{
+		super(x, y);
+
+		// Arka plan şeridi
+		bg = new FlxSprite().makeGraphic(410, 100, FlxColor.WHITE);
+		bg.alpha = 0.4;
+		bg.color = FlxColor.BLACK;
+		// Yuvarlak köşeler için drawRoundRect kullanılabilir ama performans için basit tutalım
+		// veya flixel-addons varsa: FlxSpriteUtil.drawRoundRect(bg, ...);
+		add(bg);
+
+		// Küçük ikon
+		icon = new FlxSprite(10, 10);
+		var graphic = null;
+		var hasAntialias = ClientPrefs.data.antialiasing;
+		
+		if(data.unlocked)
+		{
+			#if MODS_ALLOWED Mods.currentModDirectory = data.mod; #end
+			var image:String = 'achievements/' + data.name;
+			if(Paths.fileExists('images/$image-pixel.png', IMAGE))
+			{
+				graphic = Paths.image('$image-pixel');
+				hasAntialias = false;
+			}
+			else graphic = Paths.image(image);
+			if(graphic == null) graphic = Paths.image('unknownMod');
+		}
+		else graphic = Paths.image('achievements/lockedachievement');
+		
+		icon.loadGraphic(graphic);
+		icon.antialiasing = hasAntialias;
+		icon.setGraphicSize(40, 40); // Daha küçük ikon
+		icon.updateHitbox();
+		add(icon);
+
+		// İsim
+		text = new FlxText(55, 0, 345, data.displayName, 24);
+		text.setFormat(Paths.font("vcr.ttf"), 20, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		text.borderSize = 1.5;
+		text.y = (bg.height - text.height) / 2; // Dikey ortala
+		add(text);
 	}
 }
 
@@ -259,13 +372,12 @@ class ResetAchievementSubstate extends MusicBeatSubstate
 	public function new()
 	{
 		super();
-
 		var bg:FlxSprite = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
 		bg.alpha = 0;
 		bg.scrollFactor.set();
 		add(bg);
 		FlxTween.tween(bg, {alpha: 0.6}, 0.4, {ease: FlxEase.quartInOut});
-
+		
 		var text:Alphabet = new Alphabet(0, 180, Language.getPhrase('reset_achievement', 'Reset Achievement:'), true);
 		text.screenCenter(X);
 		text.scrollFactor.set();
@@ -319,21 +431,15 @@ class ResetAchievementSubstate extends MusicBeatSubstate
 				Achievements.achievementsUnlocked.remove(option.name);
 				option.unlocked = false;
 				option.curProgress = 0;
-				option.name = state.nameText.text = '???';
-				if(option.maxProgress > 0) state.progressTxt.text = '0 / ' + option.maxProgress;
-				state.grpOptions.members[state.curSelected].loadGraphic(Paths.image('achievements/lockedachievement'));
-				state.grpOptions.members[state.curSelected].antialiasing = ClientPrefs.data.antialiasing;
-
-				if(state.progressBar.visible)
-				{
-					if(state.barTween != null) state.barTween.cancel();
-					state.barTween = FlxTween.tween(state.progressBar, {percent: 0}, 0.5, {ease: FlxEase.quadOut,
-						onComplete: function(twn:FlxTween) state.progressBar.updateBar(),
-						onUpdate: function(twn:FlxTween) state.progressBar.updateBar()
-					});
-				}
+				option.displayName = '???'; // name'i değil displayname'i güncelle
+				state.options[state.curSelected].displayName = '???';
+				
+				// State güncelleme işlemleri manuel yapılacak çünkü updateModDisplayData yok
 				Achievements.save();
 				FlxG.save.flush();
+				
+				// Seçimi yenile ki grafikler güncellensin
+				@:privateAccess state._changeSelection();
 
 				FlxG.sound.play(Paths.sound('cancelMenu'));
 			}

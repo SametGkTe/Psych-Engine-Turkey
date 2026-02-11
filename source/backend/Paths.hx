@@ -28,6 +28,10 @@ class Paths
 {
 	inline public static var SOUND_EXT = #if web "mp3" #else "ogg" #end;
 	inline public static var VIDEO_EXT = "mp4";
+	
+	inline public static function getPreloadPath(file:String = ''):String {
+		return 'assets/shared/$file';
+	}
 
 	public static function excludeAsset(key:String) {
 		if (!dumpExclusions.contains(key))
@@ -431,14 +435,40 @@ class Paths
 			#if sys
 			if(FileSystem.exists(file))
 				currentTrackedSounds.set(file, Sound.fromFile(file));
-			#else
+			#end
+			
+			// For mobile and web targets, use OpenFlAssets
+			#if (!sys || mobile)
 			if(OpenFlAssets.exists(file, SOUND))
 				currentTrackedSounds.set(file, OpenFlAssets.getSound(file));
 			#end
-			else if(beepOnNull)
+			
+			// If still not found, try without path prefix (for embedded assets)
+			if(!currentTrackedSounds.exists(file) && (path != null && path != ""))
 			{
-				trace('SOUND NOT FOUND: $key, PATH: $path');
-				FlxG.log.error('SOUND NOT FOUND: $key, PATH: $path');
+				var fallbackFile:String = 'assets/shared/${path}/${Language.getFileTranslation(key)}.$SOUND_EXT';
+				trace('Fallback sound attempt: $fallbackFile');
+				if(OpenFlAssets.exists(fallbackFile, SOUND))
+				{
+					currentTrackedSounds.set(file, OpenFlAssets.getSound(fallbackFile));
+				}
+			}
+			
+			// Last resort: try direct assets/shared path
+			if(!currentTrackedSounds.exists(file))
+			{
+				var directPath:String = 'assets/shared/sounds/${Language.getFileTranslation(key)}.$SOUND_EXT';
+				trace('Direct path attempt: $directPath');
+				if(OpenFlAssets.exists(directPath, SOUND))
+				{
+					currentTrackedSounds.set(file, OpenFlAssets.getSound(directPath));
+				}
+			}
+			
+			if(!currentTrackedSounds.exists(file) && beepOnNull)
+			{
+				trace('SOUND NOT FOUND: $key, PATH: $path, FILE: $file');
+				FlxG.log.error('SOUND NOT FOUND: $key, PATH: $path, FILE: $file');
 				return FlxAssets.getSound('flixel/sounds/beep');
 			}
 		}

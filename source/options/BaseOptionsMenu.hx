@@ -4,8 +4,13 @@ import flixel.input.keyboard.FlxKey;
 import flixel.input.gamepad.FlxGamepad;
 import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.input.gamepad.FlxGamepadManager;
-
+import flixel.util.FlxGradient;
+import flixel.tweens.FlxTween;
+import flixel.tweens.FlxEase;
+import flixel.effects.particles.FlxEmitter;
+import flixel.effects.particles.FlxParticle;
 import objects.CheckboxThingie;
+import objects.FileSelector;
 import objects.AttachedText;
 import options.Option;
 import backend.InputFormatter;
@@ -18,91 +23,299 @@ class BaseOptionsMenu extends MusicBeatSubstate
 
 	private var grpOptions:FlxTypedGroup<Alphabet>;
 	private var checkboxGroup:FlxTypedGroup<CheckboxThingie>;
+	private var fileSelectorGroup:FlxTypedGroup<FileSelector>;
 	private var grpTexts:FlxTypedGroup<AttachedText>;
+	private var optionCards:FlxTypedGroup<FlxSprite>;
 
 	private var descBox:FlxSprite;
 	private var descText:FlxText;
 
 	public var title:String;
 	public var rpcTitle:String;
-
 	public var bg:FlxSprite;
+	
+	// Modern UI Elements
+	var bgGradient:FlxSprite;
+	var topBar:FlxSprite;
+	var bottomBar:FlxSprite;
+	var sidePanel:FlxSprite;
+	var titleText:FlxText;
+	var categoryIcon:FlxSprite;
+	var scrollIndicator:FlxSprite;
+	var particleEmitter:FlxEmitter;
+	var glowEffect:FlxSprite;
+	var bgDarken:FlxSprite;
+	
+	// Animation
+	var animTimer:Float = 0;
+	var pulseTimer:Float = 0;
+	
+	// Category colors
+	var categoryColors:Map<String, Array<Int>> = [
+		'Nota Renkleri' => [0xFF666666, 0xFF888888],
+		'Kontroller' => [0xFFE0A32A, 0xFFFF9900],
+		'Gecikme Ve Kombo' => [0xFFAA0044, 0xFFFF0066],
+		'Grafikler' => [0xFF31B0D1, 0xFF00CCFF],
+		'Arayüz' => [0xFF8D58FD, 0xFFAA77FF],
+		'Oynanis' => [0xFF58FD69, 0xFF77FF88],
+		'Dil' => [0xFFFFD700, 0xFFFFEE00]
+	];
+	
 	public function new()
 	{
 		super();
 
-		if(title == null) title = 'Options';
-		if(rpcTitle == null) rpcTitle = 'Options Menu';
+		if(title == null) title = 'Ayarlar';
+		if(rpcTitle == null) rpcTitle = 'Ayarlar Menüsü';
 		
 		#if DISCORD_ALLOWED
 		DiscordClient.changePresence(rpcTitle, null);
 		#end
 		
+		// ═══════════════════════════════════════
+		// 1. MULTI-LAYER ANIMATED BACKGROUND
+		// ═══════════════════════════════════════
+		
+		// Base background
 		bg = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
-		bg.color = 0xFFea71fd;
-		bg.screenCenter();
 		bg.antialiasing = ClientPrefs.data.antialiasing;
+		bg.setGraphicSize(Std.int(bg.width * 1.3));
+		bg.updateHitbox();
+		bg.screenCenter();
+		bg.alpha = 0.4;
+		bg.scrollFactor.set(0.05, 0.05);
 		add(bg);
+		
+		// Gradient overlay
+		var colors = categoryColors.exists(title) ? categoryColors.get(title) : [0xFF1a1a2e, 0xFF16213e];
+		bgGradient = FlxGradient.createGradientFlxSprite(
+			FlxG.width,
+			FlxG.height,
+			colors.concat([0xFF0a0a0a]),
+			1, 90
+		);
+		bgGradient.alpha = 0;
+		bgGradient.scrollFactor.set();
+		add(bgGradient);
+		
+		// Ekstra karartma katmanı
+		bgDarken = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, 0xFF000000);
+		bgDarken.alpha = 0;
+		bgDarken.scrollFactor.set();
+		add(bgDarken);
+		
+		FlxTween.tween(bgDarken, {alpha: 0.4}, 0.6, {ease: FlxEase.quartOut});
+		
+		// Particle system
+		createParticleSystem();
+		
+		// Center glow
+		glowEffect = new FlxSprite(FlxG.width / 2 - 400, FlxG.height / 2 - 400);
+		glowEffect.makeGraphic(800, 800, FlxColor.WHITE);
+		glowEffect.blend = ADD;
+		glowEffect.alpha = 0;
+		glowEffect.scrollFactor.set();
+		add(glowEffect);
+		
+		FlxTween.tween(glowEffect, {alpha: 0.06}, 0.8, {ease: FlxEase.quartOut});
 
-		// avoids lagspikes while scrolling through menus!
+		// ═══════════════════════════════════════
+		// 2. TOP BAR
+		// ═══════════════════════════════════════
+		
+		topBar = new FlxSprite(0, -150).makeGraphic(FlxG.width, 130, 0xDD000000);
+		topBar.scrollFactor.set();
+		add(topBar);
+		
+		FlxTween.tween(topBar, {y: 0}, 0.7, {ease: FlxEase.expoOut, startDelay: 0.1});
+		
+		// Category title
+		titleText = new FlxText(60, 35, FlxG.width - 120, title, 52);
+		titleText.setFormat(Paths.font("vcr.ttf"), 52, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, colors[0]);
+		titleText.borderSize = 3;
+		titleText.scrollFactor.set();
+		titleText.alpha = 0;
+		add(titleText);
+		
+		FlxTween.tween(titleText, {alpha: 1}, 0.6, {ease: FlxEase.quartOut, startDelay: 0.3});
+		
+		// Subtitle hint
+		var subtitleText:FlxText = new FlxText(60, 90, FlxG.width - 120, "Yukarı / Aşağı = Değiştir  |  ENTER = Seç  |  R = Ayarı Sıfırla  |  ESC = Geri Dön", 22);
+		subtitleText.setFormat(Paths.font("vcr.ttf"), 22, 0xFFCCCCCC, LEFT);
+		subtitleText.scrollFactor.set();
+		subtitleText.alpha = 0;
+		add(subtitleText);
+		
+		FlxTween.tween(subtitleText, {alpha: 0.7}, 0.6, {ease: FlxEase.quartOut, startDelay: 0.5});
+
+		// ═══════════════════════════════════════
+		// 3. SIDE PANEL
+		// ═══════════════════════════════════════
+		
+		sidePanel = FlxGradient.createGradientFlxSprite(
+			350,
+			FlxG.height,
+			[0x66000000, 0x00000000],
+			1, 0
+		);
+		sidePanel.x = -350;
+		sidePanel.scrollFactor.set();
+		add(sidePanel);
+		
+		FlxTween.tween(sidePanel, {x: 0}, 0.8, {ease: FlxEase.expoOut, startDelay: 0.2});
+		
+		// Decorative line
+		var decorLine:FlxSprite = new FlxSprite(40, 130).makeGraphic(4, FlxG.height - 260, FlxColor.WHITE);
+		decorLine.alpha = 0.2;
+		decorLine.scrollFactor.set();
+		add(decorLine);
+
+		// ═══════════════════════════════════════
+		// 4. OPTION CARDS CONTAINER
+		// ═══════════════════════════════════════
+		
+		optionCards = new FlxTypedGroup<FlxSprite>();
+		add(optionCards);
+		
 		grpOptions = new FlxTypedGroup<Alphabet>();
 		add(grpOptions);
 
 		grpTexts = new FlxTypedGroup<AttachedText>();
 		add(grpTexts);
-
+		
 		checkboxGroup = new FlxTypedGroup<CheckboxThingie>();
 		add(checkboxGroup);
+		
+		fileSelectorGroup = new FlxTypedGroup<FileSelector>();
+		add(fileSelectorGroup);
 
-		descBox = new FlxSprite().makeGraphic(1, 1, FlxColor.BLACK);
-		descBox.alpha = 0.6;
+		// ═══════════════════════════════════════
+		// 5. BOTTOM INFO PANEL
+		// ═══════════════════════════════════════
+		
+		bottomBar = new FlxSprite(0, FlxG.height).makeGraphic(FlxG.width, 160, 0xDD000000);
+		bottomBar.scrollFactor.set();
+		add(bottomBar);
+		
+		FlxTween.tween(bottomBar, {y: FlxG.height - 160}, 0.7, {ease: FlxEase.expoOut, startDelay: 0.3});
+		
+		// Description box
+		descBox = new FlxSprite(30, FlxG.height - 140).makeGraphic(FlxG.width - 60, 120, 0x88000000);
+		descBox.scrollFactor.set();
+		descBox.alpha = 0;
 		add(descBox);
+		
+		FlxTween.tween(descBox, {alpha: 1}, 0.6, {ease: FlxEase.quartOut, startDelay: 0.8});
 
-		var titleText:Alphabet = new Alphabet(75, 45, title, true);
-		titleText.setScale(0.6);
-		titleText.alpha = 0.4;
-		add(titleText);
-
-		descText = new FlxText(50, 600, 1180, "", 32);
-		descText.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		descText = new FlxText(50, FlxG.height - 130, FlxG.width - 100, "", 26);
+		descText.setFormat(Paths.font("vcr.ttf"), 26, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		descText.scrollFactor.set();
-		descText.borderSize = 2.4;
+		descText.borderSize = 2;
+		descText.alpha = 0;
 		add(descText);
+		
+		FlxTween.tween(descText, {alpha: 1}, 0.6, {ease: FlxEase.quartOut, startDelay: 1});
 
+		// ═══════════════════════════════════════
+		// 6. SCROLL INDICATOR
+		// ═══════════════════════════════════════
+		
+		scrollIndicator = new FlxSprite(FlxG.width - 40, FlxG.height / 2 - 50).makeGraphic(30, 100, FlxColor.WHITE);
+		scrollIndicator.alpha = 0.3;
+		scrollIndicator.scrollFactor.set();
+		add(scrollIndicator);
+
+		// ═══════════════════════════════════════
+		// 7. BUILD OPTIONS
+		// ═══════════════════════════════════════
+		
 		for (i in 0...optionsArray.length)
 		{
-			var optionText:Alphabet = new Alphabet(220, 260, optionsArray[i].name, false);
+			// Option card background (DÜZELTİLDİ: Daha geniş kart)
+			var card:FlxSprite = new FlxSprite(0, 0).makeGraphic(800, 90, 0x66000000); // 700->800, 75->90
+			card.ID = i;
+			card.alpha = 0;
+			card.scrollFactor.set();
+			optionCards.add(card);
+			
+			var optionText:Alphabet = new Alphabet(90, 180, optionsArray[i].name, false);
 			optionText.isMenuItem = true;
-			/*optionText.forceX = 300;
-			optionText.yMult = 90;*/
 			optionText.targetY = i;
+			optionText.alpha = 0;
+			optionText.scrollFactor.set(); // BUGFIX: Scroll factor eklendi
 			grpOptions.add(optionText);
 
+			// Type-specific elements
 			if(optionsArray[i].type == BOOL)
 			{
 				var checkbox:CheckboxThingie = new CheckboxThingie(optionText.x - 105, optionText.y, Std.string(optionsArray[i].getValue()) == 'true');
 				checkbox.sprTracker = optionText;
 				checkbox.ID = i;
+				checkbox.alpha = 0;
+				checkbox.scrollFactor.set(); // BUGFIX
 				checkboxGroup.add(checkbox);
+			}
+			else if(optionsArray[i].type == FILE)
+			{
+				var fileSelector:FileSelector = new FileSelector(optionText.x - 105, optionText.y, Std.string(optionsArray[i].getValue()));
+				fileSelector.sprTracker = optionText;
+				fileSelector.optionID = i;
+				fileSelector.alpha = 0;
+				fileSelector.scrollFactor.set(); // BUGFIX
+				fileSelectorGroup.add(fileSelector);
 			}
 			else
 			{
 				optionText.x -= 80;
 				optionText.startPosition.x -= 80;
-				//optionText.xAdd -= 80;
-				var valueText:AttachedText = new AttachedText('' + optionsArray[i].getValue(), optionText.width + 60);
+				var valueText:AttachedText = new AttachedText('' + optionsArray[i].getValue(), optionText.width + 80);
 				valueText.sprTracker = optionText;
 				valueText.copyAlpha = true;
 				valueText.ID = i;
+				valueText.alpha = 0;
+				valueText.scrollFactor.set(); // BUGFIX
 				grpTexts.add(valueText);
 				optionsArray[i].child = valueText;
 			}
-			//optionText.snapToPosition(); //Don't ignore me when i ask for not making a fucking pull request to uncomment this line ok
+			
 			updateTextFrom(optionsArray[i]);
+			
+			// Staggered entrance animation
+			FlxTween.tween(card, {alpha: 0.7}, 0.4, {
+				ease: FlxEase.quartOut,
+				startDelay: 0.6 + (i * 0.05)
+			});
+			FlxTween.tween(optionText, {alpha: 1}, 0.4, {
+				ease: FlxEase.quartOut,
+				startDelay: 0.65 + (i * 0.05)
+			});
 		}
 
 		changeSelection();
 		reloadCheckboxes();
+	}
+	
+	function createParticleSystem()
+	{
+		particleEmitter = new FlxEmitter(FlxG.width / 2, 100, 40);
+		particleEmitter.width = FlxG.width;
+		
+		for (i in 0...40)
+		{
+			var particle:FlxParticle = new FlxParticle();
+			particle.makeGraphic(3, 3, FlxColor.WHITE);
+			particle.exists = false;
+			particleEmitter.add(particle);
+		}
+		
+		particleEmitter.launchMode = FlxEmitterMode.SQUARE;
+		particleEmitter.velocity.set(-30, 80, 30, 200);
+		particleEmitter.lifespan.set(3, 6);
+		particleEmitter.alpha.set(0.2, 0.4, 0, 0);
+		particleEmitter.scale.set(1, 1.5, 0.5, 0.5);
+		particleEmitter.start(false, 0.08);
+		
+		add(particleEmitter);
 	}
 
 	public function addOption(option:Option) {
@@ -120,9 +333,73 @@ class BaseOptionsMenu extends MusicBeatSubstate
 	var bindingBlack:FlxSprite;
 	var bindingText:Alphabet;
 	var bindingText2:Alphabet;
+	
 	override function update(elapsed:Float)
 	{
 		super.update(elapsed);
+		
+		// ═══════════════════════════════════════
+		// ANIMATION UPDATES
+		// ═══════════════════════════════════════
+		
+		animTimer += elapsed;
+		pulseTimer += elapsed;
+		
+		// Rotate background
+		if (bg != null) {
+			bg.angle = Math.sin(animTimer * 0.3) * 2;
+		}
+		
+		// Pulse glow
+		if (glowEffect != null) {
+			glowEffect.alpha = 0.06 + Math.sin(pulseTimer * 2) * 0.03;
+			glowEffect.angle += elapsed * 15;
+		}
+		
+		// Update scroll indicator
+		if (scrollIndicator != null && optionsArray.length > 0)
+		{
+			var progress:Float = curSelected / (optionsArray.length - 1);
+			var indicatorY:Float = 180 + (progress * (FlxG.height - 420));
+			scrollIndicator.y = FlxMath.lerp(scrollIndicator.y, indicatorY, elapsed * 10);
+		}
+
+		// ═══════════════════════════════════════
+		// CARD POSITIONING (DÜZELTİLDİ)
+		// ═══════════════════════════════════════
+		
+		var startY:Float = 200;
+		var spacing:Float = 105; // 85->105 (Daha geniş aralık)
+		var centerX:Float = (FlxG.width - 800) / 2; // 800 genişliğe göre ortala
+
+		for (num => item in grpOptions.members)
+		{
+			var targetY:Float = startY + ((num - curSelected) * spacing);
+			item.y = FlxMath.lerp(item.y, targetY, elapsed * 10);
+		
+			// Update card position (DÜZELTİLDİ: Text'e tam oturması için)
+			var card = optionCards.members[num];
+			if (card != null)
+			{
+				card.x = FlxMath.lerp(card.x, centerX, elapsed * 10);
+				card.y = FlxMath.lerp(card.y, item.y - 15, elapsed * 10); // -8 -> -15 (Daha yukarı)
+			
+				// Text'i kart içine yerleştir
+				item.x = FlxMath.lerp(item.x, centerX + 110, elapsed * 10); // 100 -> 110
+			
+				// Scale effect
+				if (num == curSelected)
+				{
+					card.alpha = FlxMath.lerp(card.alpha, 1, elapsed * 10);
+					item.scale.set(1, 1);
+				}
+				else
+				{
+					card.alpha = FlxMath.lerp(card.alpha, 0.5, elapsed * 10);
+					item.scale.set(0.85, 0.85);
+				}
+			}
+		}
 
 		if(bindingKey)
 		{
@@ -140,7 +417,21 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		}
 
 		if (controls.BACK) {
-			close();
+			// Smooth exit animation
+			FlxTween.tween(bgGradient, {alpha: 0}, 0.3, {ease: FlxEase.quartIn});
+			FlxTween.tween(bgDarken, {alpha: 0}, 0.3, {ease: FlxEase.quartIn});
+			FlxTween.tween(topBar, {y: -150}, 0.3, {ease: FlxEase.backIn});
+			FlxTween.tween(bottomBar, {y: FlxG.height}, 0.3, {ease: FlxEase.backIn});
+			
+			for (card in optionCards)
+			{
+				FlxTween.tween(card, {alpha: 0}, 0.2, {ease: FlxEase.quartIn});
+			}
+			
+			new FlxTimer().start(0.3, function(tmr:FlxTimer) {
+				close();
+			});
+			
 			FlxG.sound.play(Paths.sound('cancelMenu'));
 		}
 
@@ -155,29 +446,50 @@ class BaseOptionsMenu extends MusicBeatSubstate
 						curOption.setValue((curOption.getValue() == true) ? false : true);
 						curOption.change();
 						reloadCheckboxes();
+						
+						// Visual feedback
+						var card = optionCards.members[curSelected];
+						if (card != null)
+						{
+							FlxTween.cancelTweensOf(card.scale);
+							card.scale.set(1.05, 1.05);
+							FlxTween.tween(card.scale, {x: 1, y: 1}, 0.3, {ease: FlxEase.elasticOut});
+						}
 					}
 
 				case KEYBIND:
 					if(controls.ACCEPT)
 					{
-						bindingBlack = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
-						bindingBlack.scale.set(FlxG.width, FlxG.height);
-						bindingBlack.updateHitbox();
+						bindingBlack = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, 0xFF000000);
 						bindingBlack.alpha = 0;
-						FlxTween.tween(bindingBlack, {alpha: 0.6}, 0.35, {ease: FlxEase.linear});
+						bindingBlack.scrollFactor.set();
+						FlxTween.tween(bindingBlack, {alpha: 0.8}, 0.35, {ease: FlxEase.quartOut});
 						add(bindingBlack);
-	
-						bindingText = new Alphabet(FlxG.width / 2, 160, Language.getPhrase('controls_rebinding', 'Rebinding {1}', [curOption.name]), false);
+
+						bindingText = new Alphabet(FlxG.width / 2, 200, "TUS ATANIYOR...", false);
 						bindingText.alignment = CENTERED;
+						bindingText.alpha = 0;
+						bindingText.scrollFactor.set();
 						add(bindingText);
-						
-						bindingText2 = new Alphabet(FlxG.width / 2, 340, Language.getPhrase('controls_rebinding2', 'Hold ESC to Cancel\nHold Backspace to Delete'), true);
+						FlxTween.tween(bindingText, {alpha: 1}, 0.3, {ease: FlxEase.quartOut, startDelay: 0.1});
+
+						bindingText2 = new Alphabet(FlxG.width / 2, 380, curOption.name + "\n\nESC - Iptal Et\nBACKSPACE - Sil", true);
 						bindingText2.alignment = CENTERED;
+						bindingText2.alpha = 0;
+						bindingText2.scrollFactor.set();
 						add(bindingText2);
-	
+						FlxTween.tween(bindingText2, {alpha: 1}, 0.3, {ease: FlxEase.quartOut, startDelay: 0.2});
+
 						bindingKey = true;
 						holdingEsc = 0;
 						ClientPrefs.toggleVolumeKeys(false);
+						FlxG.sound.play(Paths.sound('scrollMenu'));
+					}
+
+				case FILE:
+					if(controls.ACCEPT)
+					{
+						openFileSelector(curOption);
 						FlxG.sound.play(Paths.sound('scrollMenu'));
 					}
 
@@ -192,7 +504,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 								var add:Dynamic = null;
 								if(curOption.type != STRING)
 									add = controls.UI_LEFT ? -curOption.changeValue : curOption.changeValue;
-		
+
 								switch(curOption.type)
 								{
 									case INT, FLOAT, PERCENT:
@@ -212,7 +524,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 										}
 		
 									case STRING:
-										var num:Int = curOption.curOption; //lol
+										var num:Int = curOption.curOption;
 										if(controls.UI_LEFT_P) --num;
 										else num++;
 		
@@ -223,7 +535,6 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		
 										curOption.curOption = num;
 										curOption.setValue(curOption.options[num]);
-										//trace(curOption.options[num]);
 
 									default:
 								}
@@ -282,6 +593,9 @@ class BaseOptionsMenu extends MusicBeatSubstate
 				leOption.change();
 				FlxG.sound.play(Paths.sound('cancelMenu'));
 				reloadCheckboxes();
+				
+				// Visual feedback
+				FlxG.camera.flash(FlxColor.WHITE, 0.2);
 			}
 		}
 
@@ -323,7 +637,6 @@ class BaseOptionsMenu extends MusicBeatSubstate
 				{
 					var keyPressed:FlxKey = cast (FlxG.keys.firstJustPressed(), FlxKey);
 					var keyReleased:FlxKey = cast (FlxG.keys.firstJustReleased(), FlxKey);
-
 					if(keyPressed != NONE && keyPressed != ESCAPE && keyPressed != BACKSPACE)
 					{
 						changed = true;
@@ -341,9 +654,9 @@ class BaseOptionsMenu extends MusicBeatSubstate
 				var keyPressed:FlxGamepadInputID = NONE;
 				var keyReleased:FlxGamepadInputID = NONE;
 				if(FlxG.gamepads.anyJustPressed(LEFT_TRIGGER))
-					keyPressed = LEFT_TRIGGER; //it wasnt working for some reason
+					keyPressed = LEFT_TRIGGER;
 				else if(FlxG.gamepads.anyJustPressed(RIGHT_TRIGGER))
-					keyPressed = RIGHT_TRIGGER; //it wasnt working for some reason
+					keyPressed = RIGHT_TRIGGER;
 				else
 				{
 					for (i in 0...FlxG.gamepads.numActiveGamepads)
@@ -412,6 +725,7 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		attach.sprTracker = bind.sprTracker;
 		attach.copyAlpha = true;
 		attach.ID = bind.ID;
+		attach.scrollFactor.set(); // BUGFIX: Scroll factor eklendi
 		playstationCheck(attach);
 		attach.scaleX = Math.min(1, MAX_KEYBIND_WIDTH / attach.width);
 		attach.x = bind.x;
@@ -429,17 +743,22 @@ class BaseOptionsMenu extends MusicBeatSubstate
 
 		var gamepad:FlxGamepad = FlxG.gamepads.firstActive;
 		var model:FlxGamepadModel = gamepad != null ? gamepad.detectedModel : UNKNOWN;
-		var letter = alpha.letters[0];
-		if(model == PS4)
+		
+		// BUGFIX: Emoji kontrolü düzeltildi
+		if(model == PS4 && alpha.letters != null && alpha.letters.length > 0)
 		{
-			switch(alpha.text)
+			var letter = alpha.letters[0];
+			if(letter != null)
 			{
-				case '[', ']': //Square and Triangle respectively
-					letter.image = 'alphabet_playstation';
-					letter.updateHitbox();
-					
-					letter.offset.x += 4;
-					letter.offset.y -= 5;
+				switch(alpha.text)
+				{
+					case '[', ']':
+						letter.image = 'alphabet_playstation';
+						letter.updateHitbox();
+						
+						letter.offset.x += 4;
+						letter.offset.y -= 5;
+				}
 			}
 		}
 	}
@@ -447,14 +766,28 @@ class BaseOptionsMenu extends MusicBeatSubstate
 	function closeBinding()
 	{
 		bindingKey = false;
-		bindingBlack.destroy();
-		remove(bindingBlack);
-
-		bindingText.destroy();
-		remove(bindingText);
-
-		bindingText2.destroy();
-		remove(bindingText2);
+		
+		FlxTween.tween(bindingBlack, {alpha: 0}, 0.3, {
+			onComplete: function(twn:FlxTween) {
+				bindingBlack.destroy();
+				remove(bindingBlack);
+			}
+		});
+		
+		FlxTween.tween(bindingText, {alpha: 0}, 0.3, {
+			onComplete: function(twn:FlxTween) {
+				bindingText.destroy();
+				remove(bindingText);
+			}
+		});
+		
+		FlxTween.tween(bindingText2, {alpha: 0}, 0.3, {
+			onComplete: function(twn:FlxTween) {
+				bindingText2.destroy();
+				remove(bindingText2);
+			}
+		});
+		
 		ClientPrefs.toggleVolumeKeys(true);
 	}
 
@@ -477,30 +810,295 @@ class BaseOptionsMenu extends MusicBeatSubstate
 		curSelected = FlxMath.wrap(curSelected + change, 0, optionsArray.length - 1);
 
 		descText.text = optionsArray[curSelected].description;
-		descText.screenCenter(Y);
-		descText.y += 270;
+		
+		// Animate description update
+		FlxTween.cancelTweensOf(descText);
+		descText.alpha = 0;
+		FlxTween.tween(descText, {alpha: 1}, 0.3, {ease: FlxEase.quartOut});
 
 		for (num => item in grpOptions.members)
 		{
 			item.targetY = num - curSelected;
 			item.alpha = 0.6;
-			if (item.targetY == 0) item.alpha = 1;
+			
+			// Scale effect
+			item.scale.set(0.85, 0.85);
+			
+			if (item.targetY == 0)
+			{
+				item.alpha = 1;
+				
+				// Bounce animation
+				FlxTween.cancelTweensOf(item.scale);
+				item.scale.set(1, 1);
+				FlxTween.tween(item.scale, {x: 1.05, y: 1.05}, 0.2, {ease: FlxEase.backOut});
+			}
 		}
+		
 		for (text in grpTexts)
 		{
 			text.alpha = 0.6;
 			if(text.ID == curSelected) text.alpha = 1;
 		}
 
-		descBox.setPosition(descText.x - 10, descText.y - 10);
-		descBox.setGraphicSize(Std.int(descText.width + 20), Std.int(descText.height + 25));
-		descBox.updateHitbox();
-
-		curOption = optionsArray[curSelected]; //shorter lol
+		curOption = optionsArray[curSelected];
 		FlxG.sound.play(Paths.sound('scrollMenu'));
 	}
 
 	function reloadCheckboxes()
 		for (checkbox in checkboxGroup)
-			checkbox.daValue = Std.string(optionsArray[checkbox.ID].getValue()) == 'true'; //Do not take off the Std.string() from this, it will break a thing in Mod Settings Menu
+			checkbox.daValue = Std.string(optionsArray[checkbox.ID].getValue()) == 'true';
+
+	function openFileSelector(option:Option)
+	{
+		var initialDir:String = '';
+		var fileExtension:String = '';
+		
+		if(option.options != null && option.options.length > 0)
+			fileExtension = option.options[0];
+		
+		#if windows
+		openFileSelectorWindows(option, initialDir, fileExtension);
+		#elseif android
+		openFileSelectorAndroid(option, fileExtension);
+		#elseif linux
+		openFileSelectorLinux(option, initialDir, fileExtension);
+		#elseif mac
+		openFileSelectorMac(option, initialDir, fileExtension);
+		#end
+	}
+
+	function openFileSelectorWindows(option:Option, initialDir:String, fileExtension:String)
+	{
+		#if sys
+		var process:sys.io.Process = null;
+		try
+		{
+			var filterStr:String = 'Dosya (*' + fileExtension + ')|*' + fileExtension + '|Tum Dosyalar (*.*)|*.*';
+			var script:String = '[void][System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms")\n' +
+				'$$f = new-object System.Windows.Forms.OpenFileDialog\n' +
+				'$$f.InitialDirectory = "' + initialDir + '"\n' +
+				(fileExtension != '' ? '$$f.Filter = "' + filterStr + '"\n' : '') +
+				'$$f.ShowDialog((New-Object System.Windows.Forms.Form -Property @{TopMost = $$true }))\n' +
+				'Write-Host $$f.FileName';
+			process = new sys.io.Process('powershell', ['-NoProfile', '-Command', script]);
+			var result:String = process.stdout.readAll().toString().trim();
+			
+			if(result != '' && result != '0')
+			{
+				option.setValue(result);
+				if(option.type == FILE)
+				{
+					var fileSelector:FileSelector = null;
+					for(fs in fileSelectorGroup)
+					{
+						if(fs.optionID == curSelected)
+						{
+							fileSelector = fs;
+							break;
+						}
+					}
+					if(fileSelector != null)
+						fileSelector.selectedPath = result;
+				}
+				option.change();
+				FlxG.sound.play(Paths.sound('confirmMenu'));
+			}
+			else
+			{
+				FlxG.sound.play(Paths.sound('cancelMenu'));
+			}
+		}
+		catch(e:Dynamic)
+		{
+			FlxG.sound.play(Paths.sound('cancelMenu'));
+			trace('Dosya secici acilamadi: $e');
+		}
+		#end
+	}
+
+	function openFileSelectorAndroid(option:Option, fileExtension:String)
+	{
+		#if android
+		try
+		{
+			var downloadDir = '/storage/emulated/0/Download';
+			var documentsDir = '/storage/emulated/0/Documents';
+			var musicDir = '/storage/emulated/0/Music';
+			
+			var selectedFile = '';
+			
+			if(fileExtension == '.sol')
+			{
+				selectedFile = findFileInDirectory(downloadDir, fileExtension);
+				if(selectedFile == '')
+					selectedFile = findFileInDirectory(documentsDir, fileExtension);
+			}
+			
+			if(selectedFile != '')
+			{
+				option.setValue(selectedFile);
+				if(option.type == FILE)
+				{
+					var fileSelector:FileSelector = null;
+					for(fs in fileSelectorGroup)
+					{
+						if(fs.optionID == curSelected)
+						{
+							fileSelector = fs;
+							break;
+						}
+					}
+					if(fileSelector != null)
+						fileSelector.selectedPath = selectedFile;
+				}
+				option.change();
+				FlxG.sound.play(Paths.sound('confirmMenu'));
+			}
+			else
+			{
+				try
+				{
+					launchAndroidFileIntent(option, fileExtension);
+				}
+				catch(e:Dynamic)
+				{
+					FlxG.sound.play(Paths.sound('cancelMenu'));
+					trace('Android Intent hatasi: $e');
+				}
+			}
+		}
+		catch(e:Dynamic)
+		{
+			FlxG.sound.play(Paths.sound('cancelMenu'));
+			trace('Android dosya secici hatasi: $e');
+		}
+		#end
+	}
+
+	#if android
+	function findFileInDirectory(path:String, extension:String):String
+	{
+		#if sys
+		try
+		{
+			if(!sys.FileSystem.exists(path))
+				return '';
+			
+			var files = sys.FileSystem.readDirectory(path);
+			for(file in files)
+			{
+				if(file.endsWith(extension))
+					return path + '/' + file;
+			}
+		}
+		catch(e:Dynamic)
+		{
+			trace('Klasor okuma hatasi ($path): $e');
+		}
+		#end
+		return '';
+	}
+
+	function launchAndroidFileIntent(option:Option, fileExtension:String)
+	{
+		trace('Android dosya secici: sistem tarafindan otomatik klasorler taranıyor');
+		FlxG.sound.play(Paths.sound('cancelMenu'));
+	}
+	#end
+
+	function openFileSelectorLinux(option:Option, initialDir:String, fileExtension:String)
+	{
+		#if sys
+		var process:sys.io.Process = null;
+		try
+		{
+			var cmd = 'zenity';
+			var args = ['--file-selection', '--title=Dosya Sec'];
+			
+			if(fileExtension != '')
+				args.push('--file-filter=Dosya (*' + fileExtension + ')|*' + fileExtension);
+			
+			process = new sys.io.Process(cmd, args);
+			var result:String = process.stdout.readAll().toString().trim();
+			
+			if(result != '' && result != '0')
+			{
+				option.setValue(result);
+				if(option.type == FILE)
+				{
+					var fileSelector:FileSelector = null;
+					for(fs in fileSelectorGroup)
+					{
+						if(fs.optionID == curSelected)
+						{
+							fileSelector = fs;
+							break;
+						}
+					}
+					if(fileSelector != null)
+						fileSelector.selectedPath = result;
+				}
+				option.change();
+				FlxG.sound.play(Paths.sound('confirmMenu'));
+			}
+			else
+			{
+				FlxG.sound.play(Paths.sound('cancelMenu'));
+			}
+		}
+		catch(e:Dynamic)
+		{
+			FlxG.sound.play(Paths.sound('cancelMenu'));
+			trace('Linux dosya secici hatasi: $e');
+		}
+		#end
+	}
+
+	function openFileSelectorMac(option:Option, initialDir:String, fileExtension:String)
+	{
+		#if sys
+		var process:sys.io.Process = null;
+		try
+		{
+			var filterStr = '';
+			if(fileExtension != '')
+				filterStr = ' of type {"' + fileExtension.replace('.', '') + '"}';
+			
+			var script = 'choose file' + filterStr;
+			process = new sys.io.Process('osascript', ['-e', 'tell application "System Events" to activate', '-e', script]);
+			var result:String = process.stdout.readAll().toString().trim();
+			
+			if(result != '' && result != '0')
+			{
+				option.setValue(result);
+				if(option.type == FILE)
+				{
+					var fileSelector:FileSelector = null;
+					for(fs in fileSelectorGroup)
+					{
+						if(fs.optionID == curSelected)
+						{
+							fileSelector = fs;
+							break;
+						}
+					}
+					if(fileSelector != null)
+						fileSelector.selectedPath = result;
+				}
+				option.change();
+				FlxG.sound.play(Paths.sound('confirmMenu'));
+			}
+			else
+			{
+				FlxG.sound.play(Paths.sound('cancelMenu'));
+			}
+		}
+		catch(e:Dynamic)
+		{
+			FlxG.sound.play(Paths.sound('cancelMenu'));
+			trace('macOS dosya secici hatasi: $e');
+		}
+		#end
+	}
 }
