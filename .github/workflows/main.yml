@@ -137,15 +137,27 @@ jobs:
 
       - name: Configure Lime for Android
         run: |
+          # Lime'a SDK ve NDK yollarını kesin olarak tanıt
           haxelib run lime setup android -y
-          haxelib run lime setup
+          
+          # GitHub runner yollarını environment variable olarak ayarla
+          echo "ANDROID_SDK=${ANDROID_HOME}" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=${ANDROID_NDK_HOME}" >> $GITHUB_ENV
+          
+          # Manuel olarak lime config'e yaz (En sağlam yöntem)
+          haxelib run lime config ANDROID_SDK $ANDROID_HOME
+          haxelib run lime config ANDROID_NDK_ROOT $ANDROID_NDK_HOME
+          haxelib run lime config JAVA_HOME $JAVA_HOME
+          
+          # SScript bypass
           echo 'oy9:showMacroty8:loopCosti25y10:includeAllfg' >> ~/settings.cocoa
 
       - name: Create Version Tag
         run: echo "${{github.run_id}}" > VERSION
 
       - name: Compile Android
-        run: haxelib run lime build android -64 -D officialBuild --app-version="4.0.0-${{ github.run_id}}"
+        run: |
+          haxelib run lime build android -64 -D officialBuild --app-version="4.0.0-${{ github.run_id }}" -D ANDROID_SDK=$ANDROID_HOME -D ANDROID_NDK_ROOT=$ANDROID_NDK_HOME
 
       - name: Publish Artifact
         uses: actions/upload-artifact@v4
