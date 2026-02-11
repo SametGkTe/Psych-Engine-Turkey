@@ -2,34 +2,21 @@
 
 name: Build P.E.T
 
-
-# Controls when the action will run.
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
   push:
     branches: [ main, experimental ]
   pull_request:
     branches: [ main, experimental ]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   buildLinux:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4.1.7
-
       - uses: krdlab/setup-haxe@master
         with:
           haxe-version: 4.3.4
-      # Runs a set of commands using the runners shell
       - name: Install Haxelib
         run: |
           sudo apt-get install libvlc-dev
@@ -49,22 +36,19 @@ jobs:
         with:
           name: linuxBuild
           path: 'export/release/linux/bin'
+
   buildWindows:
     runs-on: windows-latest
-
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4.1.7
-
       - uses: krdlab/setup-haxe@master
         with:
           haxe-version: 4.3.4
-      # Runs a set of commands using the runners shell
       - name: Install Haxelib
         run: |
           haxelib setup C:/haxelib
           haxelib install hxcpp > /dev/null --quiet
-          .\"setup/windows.bat"
+          .\setup\windows.bat
         shell: cmd
       - name: Skip SScript setup mode
         run: echo 'oy9:showMacroty8:loopCosti25y10:includeAllfg' >> %USERPROFILE%/settings.cocoa
@@ -72,23 +56,20 @@ jobs:
       - name: Create Version Tag
         run: echo "${{github.run_id}}" > VERSION
       - name: Compile
-        run: haxelib run lime build windows --app-version="4.0.0-${{ github.run_id}}"  -D officialBuild
+        run: haxelib run lime build windows --app-version="4.0.0-${{ github.run_id}}" -D officialBuild
       - name: Publish Artifact
         uses: actions/upload-artifact@v4.3.4
         with:
           name: windowsBuild
           path: export/release/windows/bin
+
   buildMac:
     runs-on: macos-15
-
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4.1.7
-
       - uses: krdlab/setup-haxe@master
         with:
           haxe-version: 4.3.4
-      # Runs a set of commands using the runners shell
       - name: Install Haxelib
         run: |
           haxelib setup ~/haxelib
@@ -100,12 +81,13 @@ jobs:
       - name: Create Version Tag
         run: echo "${{github.run_id}}" > VERSION
       - name: Compile
-        run: haxelib run lime build mac --app-version="4.0.0-${{ github.run_id}}"  -D officialBuild
+        run: haxelib run lime build mac --app-version="4.0.0-${{ github.run_id}}" -D officialBuild
       - name: Publish Artifact
         uses: actions/upload-artifact@v4.3.4
         with:
           name: macBuild
           path: export/release/macos/bin
+
   buildAndroid:
     name: Build Android (Psych Engine)
     runs-on: ubuntu-latest
@@ -125,7 +107,7 @@ jobs:
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r25c # Psych Engine ve Lime için en stabil sürüm
+          ndk-version: r25c
 
       - name: Setup Haxe
         uses: krdlab/setup-haxe@master
@@ -135,23 +117,33 @@ jobs:
       - name: Install Haxelibs
         run: |
           haxelib setup ~/haxelib
-          haxelib install hxcpp > /dev/null --quiet
-          # Projenin özel kurulum betiğini çalıştırıyoruz
-          chmod +x ./setup/unix.sh
-          ./setup/unix.sh
+          haxelib install flixel 5.6.1 --quiet
+          haxelib install flixel-addons 3.2.2 --quiet
+          haxelib install flixel-tools 1.5.1 --quiet
+          haxelib install flixel-ui --quiet
+          haxelib install hscript-iris 1.1.3 --quiet
+          haxelib install tjson 1.4.0 --quiet
+          haxelib install hxdiscord_rpc 1.2.4 --quiet
+          haxelib install hxvlc 2.0.1 --skip-dependencies --quiet
+          haxelib install lime 8.1.2 --quiet
+          haxelib install openfl 9.3.3 --quiet
+          haxelib install hxcpp 4.3.2 --quiet
+          haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate 768740a56b26aa0c072720e0d1236b94afe68e3e --quiet
+          haxelib git linc_luajit https://github.com/superpowers04/linc_luajit 1906c4a96f6bb6df66562b3f24c62f4c5bba14a7 --quiet
+          haxelib git funkin.vis https://github.com/FunkinCrew/funkVis 22b1ce089dd924f15cdc4632397ef3504d464e90 --quiet
+          haxelib git grig.audio https://gitlab.com/haxe-grig/grig.audio.git cbf91e2180fd2e374924fe74844086aab7891666 --quiet
+          haxelib git mobile-controls https://github.com/MAJESTY-Development/mobile-controls.git --quiet
 
       - name: Configure Lime for Android
         run: |
-          # Lime'a SDK ve NDK yollarını otomatik tanıtıyoruz
           haxelib run lime setup android -y
-          # SScript macro bypass ayarı
+          haxelib run lime setup
           echo 'oy9:showMacroty8:loopCosti25y10:includeAllfg' >> ~/settings.cocoa
 
       - name: Create Version Tag
         run: echo "${{github.run_id}}" > VERSION
 
       - name: Compile Android
-        # Project.xml'deki logic'e göre 64-bit build alıyoruz
         run: haxelib run lime build android -64 -D officialBuild --app-version="4.0.0-${{ github.run_id}}"
 
       - name: Publish Artifact
